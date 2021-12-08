@@ -24,7 +24,7 @@ pro-release-commit-message = "(cargo-release) start next development iteration s
 curve25519-dalek = "1.2"
 rand = "0.6"
 sha2 = "0.9"
-hkdf = "0.11"
+hkdf = "0.12"
 hex = "0.4"
 
 [dev-dependencies]
