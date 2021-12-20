@@ -38,6 +38,7 @@ use std::marker::PhantomData;
 
 use digest::{Digest, Output};
 use num_bigint::BigUint;
+use subtle::ConstantTimeEq;
 
 use crate::types::{SrpAuthError, SrpGroup};
 use crate::utils::{compute_k, compute_m1, compute_m2, compute_u};
@@ -109,7 +110,7 @@ impl<'a, D: Digest> SrpServer<'a, D> {
         let k = compute_k::<D>(self.params);
         let b_pub = self.compute_b_pub(&b, &k, &v);
 
-        // Safeguard against malicious B
+        // Safeguard against malicious A
         if &a_pub % &self.params.n == BigUint::default() {
             return Err(SrpAuthError {
                 description: "illegal_parameter: malicious a_pub value",
@@ -144,15 +145,15 @@ impl<D: Digest> SrpServerVerifier<D> {
     }
 
     /// Verification data for sending to the client.
-    pub fn proof(&self) -> &Output<D> {
+    pub fn proof(&self) -> &[u8] {
         // TODO not Output
-        &self.m2
+        &self.m2.as_slice()
     }
 
     /// Process user proof of having the same shared secret.
     pub fn verify_client(&self, reply: &[u8]) -> Result<(), SrpAuthError> {
-        if self.m1.as_slice() != reply {
-            // TODO timing attack
+        if self.m1.ct_eq(reply).unwrap_u8() != 1 {
+            // aka == 0
             Err(SrpAuthError {
                 description: "bad_record_mac: Incorrect client proof",
             })

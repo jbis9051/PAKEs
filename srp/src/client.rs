@@ -61,6 +61,7 @@ use std::marker::PhantomData;
 
 use digest::{Digest, Output};
 use num_bigint::BigUint;
+use subtle::ConstantTimeEq;
 
 use crate::types::{SrpAuthError, SrpGroup};
 use crate::utils::{compute_k, compute_m1, compute_m2, compute_u};
@@ -202,14 +203,14 @@ impl<D: Digest> SrpClientVerifier<D> {
     }
 
     /// Verification data for sending to the server.
-    pub fn proof(&self) -> &Output<D> {
-        &self.m1
+    pub fn proof(&self) -> &[u8] {
+        &self.m1.as_slice()
     }
 
     /// Verify server reply to verification data.
     pub fn verify_server(&self, reply: &[u8]) -> Result<(), SrpAuthError> {
-        if self.m2.as_slice() != reply {
-            // TODO timing attack
+        if self.m2.ct_eq(reply).unwrap_u8() != 1 {
+            // aka == 0
             Err(SrpAuthError {
                 description: "bad_record_mac: Incorrect server proof",
             })
